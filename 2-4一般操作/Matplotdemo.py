@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 import sqlalchemy as sa
 import tushare as ts
 from math import sqrt
+import seaborn # 画图美化
 pd.set_option('display.width', 350)
 
 # =================================================================

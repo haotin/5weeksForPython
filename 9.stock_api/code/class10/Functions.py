@@ -379,3 +379,116 @@ def auto_send_email(to_address, subject, content, from_address='your_email_addre
             try_num += 1
             if try_num > max_try_num:
                 break
+
+
+
+# -*- coding: utf-8 -*-
+"""
+@author: xingbuxing
+汇总常用函数
+"""
+import os
+import sys
+sys.path.append("..")
+import pandas as pd  # 导入pandas，我们一般为pandas去一个别名叫做pd
+
+import urllib2
+import time
+import datetime
+from email.mime.text import MIMEText
+import smtplib
+
+
+
+def get_latest_stock_price_from_sina(code_list):
+    """
+    从新浪网获取股票最新的价格，以及买一价格和卖一价格
+    :param code_list:
+    :return:
+    """
+    # 拼接url地址
+    url = "http://hq.sinajs.cn/list=" + ",".join(code_list)
+
+    # 抓取原始股票数据
+    max_try_num = 5
+    try_num = 0
+    while True:
+        try:
+            content = urllib2.urlopen(url, timeout=10).read().decode("gbk").encode('utf8').strip()
+            break
+        except:
+            print '抓取股票数据失败，10s后重试...'
+            try_num += 1
+            if try_num > max_try_num:
+                print '抓取股票数据失败次数过多，退出...'
+                break
+            time.sleep(10)
+
+    # 遍历每行数据
+    output_df = pd.DataFrame()
+    for line in content.split('\n'):
+        line_split = line.split(',')
+        code = line_split[0].split('="')[0][-8:]
+        if len(line_split) == 1:
+            print '股票退市'
+            output_df.loc[code, '最新价'] = None
+            continue
+        open_price = float(line_split[1])
+        if open_price - 0.0 < 0.0001:
+            print '股票停牌'
+            output_df.loc[code, '最新价'] = None
+            continue
+
+        # 读取数据
+        output_df.loc[code, '最新价'] = float(line_split[3])
+        output_df.loc[code, '买一价'] = float(line_split[7])
+        output_df.loc[code, '卖一价'] = float(line_split[6])
+
+    output_df.reset_index(inplace=True)
+    output_df.rename(columns={'index': '股票代码'}, inplace=True)
+    return output_df
+
+#
+# def auto_send_email(to_address, subject, content, from_address='842678778@qq.com'):
+#     """
+#     :param to_address: 收件箱地址
+#     :param subject: 邮件主题
+#     :param content: 邮件内容
+#     :param from_address: 发件箱地址
+#     :return:
+#     使用qq邮箱发送邮件的程序。一般用户报错提醒，需要去qq邮箱中开通密码
+#     """
+#     max_try_num = 5
+#     try_num = 0
+#
+#
+#     while True:
+#         try:
+#             msg = MIMEText(datetime.datetime.now().strftime("%m-%d %H:%M:%S") + ' ' + content)
+#             msg["Subject"] = subject + ' ' + datetime.datetime.now().strftime("%m-%d %H:%M:%S")
+#             msg["From"] = from_address
+#             msg["To"] = to_address
+#
+#
+#             username = from_address
+#             # 此处password为授权码，需要在qq邮箱中设置获取，
+#             # 设置教程http://service.mail.qq.com/cgi-bin/help?subtype=1&&no=1001256&&id=28
+#             password = 'qnxpqdcbqikdbbef'
+#
+#             server = smtplib.SMTP('smtp.qq.com')
+#             server.starttls()
+#             server.login(username, password )
+#             server.sendmail(from_address, to_address, msg.as_string())
+#             server.quit()
+#             print '邮件发送成功'
+#             break
+#         except:
+#             print '邮件发送失败'
+#             try_num += 1
+#             if try_num > max_try_num:
+#                 break
+#
+#
+# if __name__ == '__main__':
+#     content = "30 reched ,get up boy!"
+#     auto_send_email("616566709@qq.com",'BTC_FOR_YOU',content)
